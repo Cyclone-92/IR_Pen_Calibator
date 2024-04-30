@@ -15,7 +15,7 @@ class capstone():
     def __init__(self):
         self.loader = QUiLoader()
         self.app = QtWidgets.QApplication(sys.argv)
-        self.window = self.loader.load("untitled.ui")
+        self.window = self.loader.load("main.ui")
         self.radiobutton = self.window.radiobutton
         self.comboBox = self.window.comboBox
         self.stop_button = self.window.stop_button
