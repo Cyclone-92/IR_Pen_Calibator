@@ -7,7 +7,7 @@ from PySide6.QtCore import QThread, Signal
 from cameras import get_available_cameras
 import numpy as np
 from camera_opncv import image_thread
-
+from pygame_opencv import PyGame_thread
 
 
 class capstone():
@@ -16,13 +16,18 @@ class capstone():
         self.loader = QUiLoader()
         self.app = QtWidgets.QApplication(sys.argv)
         self.window = self.loader.load("main.ui")
+
+    # ---------- variables---------------
+        # self.image = np.ndarray()
+    # ---------- Button Initialzation --------------------------
         self.radiobutton = self.window.radiobutton
         self.comboBox = self.window.comboBox
         self.stop_button = self.window.stop_button
         self.slider = self.window.slider_
         self.startbutton = self.window.start_button
         self.textbox = self.window.textbox
-        self.opencv_thread = image_thread()
+        self.pygamebutton = self.window.launchpybutton
+        self.comboBox_pygame = self.window.comboBox_pygame
     # ---------- Graphic Box --------------------
         self.graphicview = self.window.graphicview
         self.graphic_width = self.graphicview.size().width()
@@ -33,16 +38,48 @@ class capstone():
         self.radiobutton.setChecked(False)
         self.radiobutton.toggled.connect(self.on_radio_button_toggled)
         self.startbutton.clicked.connect(self.run_start)
-        self.stop_button.clicked.connect(self.stop_all)
+        self.stop_button.clicked.connect(self.stop_camera_opencv)
+        self.pygamebutton.clicked.connect(self.run_pygame)
+        self.comboBox_pygame.currentTextChanged.connect(self.select_bcombo_mode)
+    # ---------- Thread Initialization-------------------------
         self.opencv_thread = image_thread()
-    
-    def stop_all(self):
-        self.opencv_thread.stop()
+        self.pygame_thread = PyGame_thread()
+
+    def select_bcombo_mode(self):
+        self.pygame_thread.select_mode_func(self.comboBox_pygame.currentText())
+        print(f"Current selcted moode is : {self.pygame_thread.select_mode}")
+
+    def run_pygame(self):
+
+        if ((self.comboBox.currentText() == "No camera selected") and (self.comboBox_pygame.currentText() == "Mouse")):
+            self.update_output_terminal("Starting the pygame")
+            self.pygame_thread.stop_pygame = False
+            self.pygame_thread.pygame_end = False
+            self.pygame_thread.select_mode_func(self.comboBox_pygame.currentText())
+            self.pygame_thread.start()
+        elif ((self.comboBox.currentText() != "No camera selected") and (self.comboBox_pygame.currentText() == "Mouse")):
+            self.update_output_terminal("Starting the pygame")
+            self.pygame_thread.stop_pygame = False
+            self.pygame_thread.pygame_end = False
+            self.pygame_thread.select_mode_func(self.comboBox_pygame.currentText())
+            self.pygame_thread.start()
+        elif((self.comboBox.currentText() != "No camera selected")and (self.comboBox_pygame.currentText() == "IR_Pen")):
+            if (len(self.image) != 0):
+                self.update_output_terminal("Starting the pygame")
+                self.pygame_thread.stop_pygame = False
+                self.pygame_thread.pygame_end = False
+                self.pygame_thread.select_mode_func(self.comboBox_pygame.currentText())
+                self.pygame_thread.start()
+            else:
+                self.update_output_terminal("No valid image found")
+
+    def stop_camera_opencv(self):
         if (self.comboBox.currentText() != "No camera selected"):
+            self.opencv_thread.stop()
+            self.pygame_thread.stop_pygame_functions()
             self.graphicview.scene().clear()
         # self.opencv_thread.stop_signal.emit(True)
         
-
     def on_radio_button_toggled(self):
         if self.radiobutton.isChecked():
             self.update_output_terminal("Searching for cameras")
@@ -75,23 +112,20 @@ class capstone():
             self.run_thread()
 
     def render_graphics(self,image):
+        self.image = image
+        self.pygame_thread.image = self.image
         # Convert the numpy array image to a QImage
-        q_image = QImage(image.data, image.shape[1], image.shape[0], image.strides[0], QImage.Format_RGB888).rgbSwapped()
-
-        # Create a QGraphicsPixmapItem with the QImage
-        pixmap_item = QGraphicsPixmapItem(QPixmap.fromImage(q_image))
-
+        q_image = QImage(self.image, image.shape[1], image.shape[0], image.strides[0], QImage.Format_RGB888).rgbSwapped()
         # Get the scene associated with the QGraphicsView
         scene = self.graphicview.scene()
-
         # If no scene exists, create a new one
         if scene is None:
             scene = QGraphicsScene()
             self.graphicview.setScene(scene)
-
-        # Clear the scene
-        scene.clear()
-
+        else:
+            scene.clear()
+        # Create a QGraphicsPixmapItem with the QImage
+        pixmap_item = QGraphicsPixmapItem(QPixmap.fromImage(q_image))
         # Add the QGraphicsPixmapItem to the scene
         scene.addItem(pixmap_item)
 
