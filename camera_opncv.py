@@ -46,8 +46,13 @@ class image_thread(QThread):
             elif(self.not_stoped):
                 self.emit_message("Broadcasting ended")
                 break
+            
+            # Lets resize to fit in the image
+            resized_image =cv2.resize(frame,(self.width,self.height))
+            # Lets flip the image
+            flipped = cv2.flip(resized_image, 0)
             # Emit the frame as a signal
-            self.emit_image(cv2.resize(frame,(self.width,self.height)))
+            self.emit_image(flipped)
             # print(frame.dtype)
 
             # You can add any processing or analysis of the frame here
